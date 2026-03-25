@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方剂学刷题系统</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --bg-color: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 90%;
+            background: white;
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .modes {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .mode-btn {
+            background-color: #ecf0f1;
+            color: var(--primary-color);
+        }
+
+        .mode-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .question-card {
+            margin-bottom: 20px;
+        }
+
+        .info-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .question-text {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #34495e;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 5px solid var(--primary-color);
+            min-height: 60px;
+            margin-bottom: 20px;
+        }
+
+        .options {
+            display: grid;
+            gap: 10px;
+        }
+
+        .option-btn {
+            background-color: white;
+            border: 2px solid #ddd;
+            text-align: left;
+            padding: 15px;
+            font-size: 16px;
+        }
+
+        .option-btn:hover:not(.disabled) {
+            border-color: var(--primary-color);
+            background-color: #f0f4f8;
+        }
+
+        .option-btn.correct {
+            background-color: var(--success-color) !important;
+            color: white;
+            border-color: var(--success-color);
+        }
+
+        .option-btn.wrong {
+            background-color: var(--error-color) !important;
+            color: white;
+            border-color: var(--error-color);
+        }
+
+        .nav-btns {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .nav-btn {
+            background-color: #3498db;
+            color: white;
+            width: 100px;
+        }
+
+        .nav-btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .progress {
+            text-align: center;
+            margin-top: 10px;
+            color: #95a5a6;
+            font-size: 14px;
+        }
+
+        .result-mark {
+            display: inline-block;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 style="text-align: center; color: var(--primary-color);">方剂刷题练习</h2>
+        
+        <!-- 模式切换 -->
+        <div class="modes">
+            <button class="mode-btn active" onclick="changeMode('category')">按分类出题</button>
+            <button class="mode-btn" onclick="changeMode('composition')">按组成出题</button>
+            <button class="mode-btn" onclick="changeMode('indications')">按主治出题</button>
+        </div>
+
+        <!-- 题目区域 -->
+        <div id="quiz-area">
+            <div class="info-label" id="mode-label">题目要求：根据以下分类选择方剂名称</div>
+            <div class="question-text" id="question-content">加载中...</div>
+            
+            <div class="options" id="options-container">
+                <!-- 选项动态生成 -->
+            </div>
+        </div>
+
+        <!-- 导航 -->
+        <div class="nav-btns">
+            <button class="nav-btn" id="prev-btn" onclick="prevQuestion()">上一题</button>
+            <button class="nav-btn" id="refresh-btn" onclick="initQuiz()" style="background-color: #9b59b6;">换一批题</button>
+            <button class="nav-btn" id="next-btn" onclick="nextQuestion()">下一题</button>
+        </div>
+
+        <div class="progress" id="progress-text">第 1 / 10 题</div>
+    </div>
+
+<script>
+    // 数据源
+    const rawData = [
+        { name: "桂枝湯", category: "解表剤 / 辛温解表剤", composition: "桂枝9g 芍薬9g 甘草6g 生姜9g 大棗6g", indications: "風寒表証（表寒表虚証）" },
+        { name: "銀翹散", category: "解表剤 / 辛涼解表剤", composition: "連翹30g 金銀花30g 桔梗18g 薄荷18g 竹葉12g 甘草15g 荊芥12g 淡豆豉15g 牛蒡子18g", indications: "風熱犯衛" },
+        { name: "荊防敗毒散", category: "解表剤 / 扶正解表剤", composition: "羌活・独活・柴胡• 前胡・枳殻・茯苓． 荊芥・防風・桔梗・川芎各5 甘草3", indications: "発汗解表・消疮止痛。正虚，外感風寒湿邪。风寒湿的表证。風邪症状や皮膚の急性化膿症を改善する。" },
+        { name: "麻黄附子細辛湯", category: "解表剤 / 扶正解表剤", composition: "麻黄3g 細辛3g 炮附子3g", indications: "陽虚外感" },
+        { name: "参蘇飲", category: "解表剤 / 扶正解表剤", composition: "人参 1.5 紫蘇葉1葛根 2 木香1 前胡 2 半夏 3茯苓3陳皮2甘草1桔梗2枳実1生姜1.5大棗 1.5", indications: "益気解表・祛痰止咳。感冒、咳。外感风寒兼气虚。益气解表、理气化痰。适用于体质虚弱者的感冒，伴有咳嗽痰多。" },
+        { name: "大承気湯", category: "瀉下剤 / 寒下剤", composition: "大黄12g 厚朴15g 枳実12g 芒硝9g", indications: "熱結腸胃" },
+        { name: "大黄附子湯", category: "瀉下剤 / 温下剤", composition: "大黄9g 炮附子9g 細辛6g", indications: "寒積裏実" },
+        { name: "麻子仁丸", category: "瀉下剤 / 潤下剤", composition: "麻子仁500g 白芍250g 枳実250g 大黄500g 厚朴250g 杏仁250g", indications: "腸胃燥熱，便秘，頻尿" },
+        { name: "小柴胡湯", category: "和解剤 / 和解少陽剤", composition: "柴胡15g 黄芩9g 人参6g 半夏9g 甘草6g 生姜9g 大棗4g", indications: "少陽半表半裏証" },
+        { name: "逍遙散", category: "和解剤 / 調和肝脾剤", composition: "柴胡9g 当帰9g 白芍9g 白朮9g 茯苓9g 甘草4.5g 生姜3g 薄荷1g", indications: "肝鬱血虚" },
+        { name: "半夏瀉心湯", category: "和解剤 / 調和上下剤（調和腸胃剤）", composition: "半夏9g 黄芩6g 乾姜6g 人参6g 甘草6g 黄連3g 大棗4g", indications: "心下痞鞭" },
+        { name: "白虎湯", category: "清熱剤 / 清気分熱剤", composition: "石膏30g 知母9g 甘草3g 粳米9g", indications: "肺胃熱盛，熱厥" },
+        { name: "清営湯", category: "清熱剤 / 清営涼血剤", composition: "犀角 3生地黄 15玄参 9 麦門冬 9 金銀花 12連翹9丹参 9黄連 3竹葉心 3", indications: "解熱解毒·滋陰涼血。热入营分（身热夜甚、神烦低热）。" },
+        { name: "黄連解毒湯", category: "清熱剤 / 清熱解毒剤", composition: "黄連3～9g 黄芩6g 黄柏6g 山梔子9g", indications: "熱毒壅盛三焦" },
+        { name: "清瘟敗毒飲", category: "清熱剤 / 気血両清剤", composition: "生石膏 24～36 生地黄 6~12 犀角6~12 黄連 3 ~4.5 山梔子 9 桔梗 3 黄芩 9 知母 12 赤芍 12 玄参24 連翹15 生甘草6牡丹皮9鮮竹葉9", indications: "清熱解毒·涼血瀉火。清热解毒、凉血救阴。用于气血两燔（大热渴饮、神昏谵语）" },
+        { name: "瀉白散", category: "清熱剤 / 清臓腑熱剤", composition: "地骨皮30g 桑白皮30g 炙甘草3g 粳米9g", indications: "肺熱咳嗽" },
+        { name: "竜胆瀉肝湯", category: "清熱剤 / 清臓腑熱剤", composition: "竜胆草6g 黄芩10g 山梔子10g 沢瀉10g 木通10g 車前子10g 当帰3g 生地黄10g 柴胡6g 甘草6g", indications: "肝胆実火，下焦湿熱" },
+        { name: "玉女煎", category: "清熱剤 / 清臓腑熱剤", composition: "石膏15～30g 熟地黄9～30g 麦門冬6g 知母4.5g 牛膝4.5g", indications: "胃熱陰虚" },
+        { name: "白頭翁湯", category: "清熱剤 / 清臓腑熱剤", composition: "白頭翁15g 黄柏12g 黄連4～6g 秦皮12g", indications: "熱痢" },
+        { name: "滋陰降火湯", category: "清熱剤 / 清虚熱剤", composition: "炙甘草1.5g 当帰4g 芍薬7g 地黄2.5g 生地黄2.5g 熟地黄・天門冬・麦門冬・白朮 各3g 陈皮等", indications: "肺腎陰虚・火旺" },
+        { name: "清絡飲", category: "祛暑剤 / 祛暑清熱剤", composition: "鮮荷葉辺6 鮮金銀花6 絲瓜絡6 西瓜皮6 鮮扁豆花6 鮮竹葉心6", indications: "祛暑清熱。暑热伤肺轻证（头晕、发热但不出汗）。" },
+        { name: "香薷散", category: "祛暑剤 / 祛暑解表剤", composition: "香薷15g 白扁豆12g 厚朴12g", indications: "陰暑（外寒内湿）" },
+        { name: "六一散", category: "祛暑剤 / 祛暑利湿剤", composition: "滑石、甘草", indications: "祛暑利湿。暑湿証の口渇・煩躁・ほてり・小便不利・下痢など" },
+        { name: "清暑益気湯", category: "祛暑剤 / 清暑益気剤", composition: "西洋参5g 石斛15g 麦門冬9g 黄連3g 竹葉6g 荷梗15g 知母6g 甘草3g 粳米15g 西瓜翠皮30g", indications: "感受暑熱，気津両傷" },
+        { name: "理中丸", category: "温裏剤 / 温中散寒剤", composition: "人参10g 乾姜10g 甘草10g 白朮10g", indications: "中焦虚寒，寒邪直中" },
+        { name: "四逆湯", category: "温裏剤 / 回陽救逆剤", composition: "生附子6～9g 乾姜6～9g 炙甘草6g", indications: "陽虚，陰寒内盛，亡陽虚脱" },
+        { name: "当帰四逆湯", category: "温裏剤 / 温経散寒剤", composition: "当帰9g 桂枝9g 芍薬9g 細辛3g 炙甘草6g 大棗5g 通草3g", indications: "厥陰寒証" },
+        { name: "防風通聖散", category: "表裏双解剤 / 解表攻裏剤", composition: "防風・荊芥・連翹・麻黄・薄荷・川芎・当帰・白芍・白朮・山梔子・大黄・芒硝各1.5g 等", indications: "風熱壅盛，表裏倶実" },
+        { name: "葛根黄苓黄連湯", category: "表裏双解剤 / 解表清裏剤", composition: "葛根18g 炙甘草6g 黄芩9g 黄連9g", indications: "外感表証未解・熱邪入裏" },
+        { name: "五積散", category: "表裏双解剤 / 解表温裏剤", composition: "白芷・川芎・炙甘草・茯苓・当帰・肉桂・白芍・半夏各2g 等", indications: "外感風寒，内傷寒湿" },
+        { name: "四君子湯", category: "補益剤 / 補気剤", composition: "人参6g 白朮9g 茯苓9g 炙甘草6g", indications: "脾気虚" },
+        { name: "四物湯", category: "補益剤 / 補血剤", composition: "当帰9g 川芎6g 白芍12g 熟地黄12g", indications: "肝血不足" },
+        { name: "十全大補湯", category: "補益剤 / 気血双補剤", composition: "人参8g 肉桂8g 川芎5g 熟地黄15g 茯苓8g 白朮10g 炙甘草5g 黄耆15g 当帰10g 白芍8g", indications: "気血両虚" },
+        { name: "六味地黄丸", category: "補益剤 / 補陰剤", composition: "熟地黄24g 山茱萸12g 山薬12g 沢瀉9g 茯苓9g 牡丹皮9g", indications: "腎陰虚，火旺" },
+        { name: "八味地黄丸", category: "補益剤 / 補陽剤", composition: "熟地黄24g 山薬12g 山茱萸12g 沢瀉9g 茯苓9g 牡丹皮9g 桂枝3g 炮附子3g", indications: "腎陽虚" },
+        { name: "酸棗仁湯", category: "安神剤 / 滋養安神剤", composition: "酸棗仁18g 炙甘草3g 知母6g 茯苓6g 川芎3g", indications: "肝血不足，虚火上擾" },
+        { name: "玉屛風散", category: "固渋剤 / 固表止汗剤", composition: "黄耆18g 白朮6g 防風6g", indications: "衛陽不固" },
+        { name: "半夏厚朴湯", category: "理気剤 / 行気剤", composition: "半夏9g 厚朴9g 茯苓12g 生姜9g 紫蘇葉6g", indications: "痰気鬱結" },
+        { name: "蘇子降気湯", category: "理気剤 / 降気剤", composition: "紫蘇子9g 半夏9g 当帰6g 炙甘草5g 肉桂2g 厚朴6g 前胡6g 紫蘇葉2g", indications: "痰涎壅盛，上実下虚" },
+        { name: "桂枝茯苓丸", category: "理血剤 / 活血祛瘀剤", composition: "桂枝9g 茯苓9g 牡丹皮9g 桃仁9g 赤芍9g", indications: "血瘀" },
+        { name: "芎帰膠艾湯", category: "理血剤 / 止血剤", composition: "川芎6g 阿膠6g 甘草6g 艾葉10g 当帰10g 白芍12g 乾地黄15g", indications: "衝任虚損" },
+        { name: "消風散", category: "治風剤 / 疏散外風剤", composition: "当帰・生地黄・防風・蝉退・知母・苦参・胡麻仁・荊芥・蒼朮・牛蒡子・石膏各6g 等", indications: "風湿熱毒" },
+        { name: "当帰飲子", category: "治風剤 / 平熄内風剤", composition: "当帰・白芍・川芎・生地黄・白蒺藜・防風・荊芥穂各6g 何首烏3g 黄耆3g 炙甘草3g", indications: "血燥生風" },
+        { name: "麦門冬湯", category: "治燥剤 / 滋陰潤燥剤", composition: "麦門冬15g 半夏4.5g 人参9g 甘草3g 粳米15g 大棗3g", indications: "生津益胃・下気降逆・止咳化痰" },
+        { name: "平胃散", category: "祛湿剤 / 燥湿和胃剤", composition: "蒼朮15g 厚朴9g 陳皮9g 甘草4g", indications: "湿困脾胃" },
+        { name: "五苓散", category: "祛湿剤 / 利水滲湿剤", composition: "猪苓9g 沢瀉15g 白朮9g 茯苓9g 桂枝6g", indications: "水湿内停" },
+        { name: "真武湯", category: "祛湿剤 / 温化水湿剤", composition: "茯苓9g 芍薬9g 白朮6g 生姜9g 炮附子9g", indications: "脾腎陽虚，水気内停" },
+        { name: "独活寄生湯", category: "祛湿剤 / 祛風勝湿剤", composition: "独活9g 桑寄生・杜仲・牛膝・細辛・秦艽・茯苓・肉桂・防風・川芎・人参・甘草・当帰・白芍・熟地黄各6g", indications: "痹証日久，肝腎両虧，気血不足" },
+        { name: "二陳湯", category: "祛痰剤 / 燥湿化痰剤", composition: "半夏15g 陳皮15g 茯苓10g 炙甘草3g", indications: "湿痰" },
+        { name: "小陥胸湯", category: "祛痰剤 / 清熱化痰剤", composition: "黄連6g 半夏12g 栝楼実30g", indications: "痰熱互結" },
+        { name: "半夏白朮天麻湯", category: "祛痰剤 / 治風化痰剤", composition: "半夏9g 天麻6g 茯苓6g 陳皮6g 白朮15g 甘草4g 生姜3g 大棗4g", indications: "風痰上擾" },
+        { name: "保和丸", category: "消導化積剤 / 消食導滞剤", composition: "山査子180g 神麴60g 半夏90g 茯苓90g 陳皮30g 連翹30g 萊菔子30g", indications: "食積" },
+        { name: "大黄牡丹皮湯", category: "癰瘍剤 / 内癰剤", composition: "大黄18g 牡丹皮9g 桃仁12g 冬瓜子30g 芒硝9g", indications: "腸癰初起，少腹腫痞" }
+    ];
+
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let currentMode = 'category'; // category, composition, indications
+    let userAnswers = []; // 记录用户每题的状态
+
+    // 初始化考试
+    function initQuiz() {
+        // 随机抽取10个
+        currentQuestions = [...rawData].sort(() => 0.5 - Math.random()).slice(0, 10);
+        currentIndex = 0;
+        userAnswers = new Array(10).fill(null);
+        renderQuestion();
+    }
+
+    // 切换模式
+    function changeMode(mode) {
+        currentMode = mode;
+        // 更新按钮UI
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.innerText.includes(getModeName(mode))) btn.classList.add('active');
+        });
+        
+        let label = "";
+        if(mode === 'category') label = "题目要求：根据以下【分类】选择正确的方剂";
+        if(mode === 'composition') label = "题目要求：根据以下【组成】选择正确的方剂";
+        if(mode === 'indications') label = "题目要求：根据以下【主治】选择正确的方剂";
+        document.getElementById('mode-label').innerText = label;
+
+        renderQuestion();
+    }
+
+    function getModeName(mode) {
+        if(mode === 'category') return "分类";
+        if(mode === 'composition') return "组成";
+        if(mode === 'indications') return "主治";
+    }
+
+    // 渲染题目
+    function renderQuestion() {
+        const item = currentQuestions[currentIndex];
+        const questionContent = document.getElementById('question-content');
+        const optionsContainer = document.getElementById('options-container');
+        const progressText = document.getElementById('progress-text');
+
+        // 设置题干
+        questionContent.innerText = item[currentMode];
+
+        // 生成选项：1个正确 + 3个错误
+        let correctName = item.name;
+        let distractors = rawData
+            .filter(d => d.name !== correctName)
+            .sort(() => 0.5 - Math.random())
+            .slice(0, 3)
+            .map(d => d.name);
+        
+        let options = [correctName, ...distractors].sort(() => 0.5 - Math.random());
+
+        // 清空并填充选项
+        optionsContainer.innerHTML = '';
+        options.forEach(optName => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = optName;
+            
+            // 如果这道题已经答过了，恢复显示状态
+            if (userAnswers[currentIndex] !== null) {
+                btn.classList.add('disabled');
+                if (optName === correctName) btn.classList.add('correct');
+                if (optName === userAnswers[currentIndex] && optName !== correctName) btn.classList.add('wrong');
+            } else {
+                btn.onclick = () => checkAnswer(optName, correctName, btn);
+            }
+            
+            optionsContainer.appendChild(btn);
+        });
+
+        // 更新导航按钮和进度
+        progressText.innerText = `第 ${currentIndex + 1} / 10 题`;
+        document.getElementById('prev-btn').disabled = currentIndex === 0;
+        document.getElementById('next-btn').disabled = currentIndex === 9;
+    }
+
+    // 检查答案
+    function checkAnswer(selected, correct, btn) {
+        if (userAnswers[currentIndex] !== null) return; // 防止重复点击
+
+        userAnswers[currentIndex] = selected;
+        const allButtons = document.querySelectorAll('.option-btn');
+        
+        allButtons.forEach(b => {
+            b.classList.add('disabled');
+            if (b.innerText === correct) {
+                b.classList.add('correct');
+            }
+        });
+
+        if (selected !== correct) {
+            btn.classList.add('wrong');
+        }
+
+        // 1秒后自动跳到下一题 (可选)
+        // setTimeout(nextQuestion, 1200);
+    }
+
+    function nextQuestion() {
+        if (currentIndex < 9) {
+            currentIndex++;
+            renderQuestion();
+        }
+    }
+
+    function prevQuestion() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            renderQuestion();
+        }
+    }
+
+    // 页面加载完成后启动
+    window.onload = initQuiz;
+</script>
+
+</body>
+</html>
