@@ -162,8 +162,8 @@
     <div class="container">
         <!-- 模式切换 -->
         <div class="modes">
-            <button class="mode-btn active" onclick="changeMode('category')">分类</button>
-            <button class="mode-btn" onclick="changeMode('composition')">组成</button>
+            <button class="mode-btn active" onclick="changeMode('category')">分類</button>
+            <button class="mode-btn" onclick="changeMode('composition')">組成</button>
             <button class="mode-btn" onclick="changeMode('indications')">主治</button>
         </div>
 
@@ -175,14 +175,14 @@
 
         <!-- 导航 -->
         <div class="nav-btns">
-            <button class="nav-btn" id="prev-btn" onclick="prevQuestion()">上一题</button>
-            <button class="nav-btn" id="next-btn" onclick="nextQuestion()">下一题</button>
+            <button class="nav-btn" id="prev-btn" onclick="prevQuestion()">前の問題</button>
+            <button class="nav-btn" id="next-btn" onclick="nextQuestion()">次の問題</button>
         </div>
 
         <!-- 功能按钮 -->
         <div class="action-btns">
-            <button class="refresh-btn" onclick="initQuiz(10)">随机抽取 10 题</button>
-            <button class="all-btn" onclick="initQuiz(rawData.length)">测试全部方剂 (共53题)</button>
+            <button class="refresh-btn" onclick="initQuiz(10)">ランダムに10問出題</button>
+            <button class="all-btn" onclick="initQuiz(rawData.length)">全方剤テスト (全53問)</button>
         </div>
 
         <!-- 统计 -->
